@@ -1,4 +1,4 @@
-SELECT TOP 500
+SELECT TOP 200
     DATEADD(DAY, p.datum, '1900-01-01')         AS datum,
     CONVERT(time, DATEADD(SECOND, p.CAS, 0))    AS cas,
     p.cip                                       AS cip,

@@ -102,27 +102,3 @@ def passes_by_person(first_name: str, last_name: str):
 # uvicorn api:app --reload
 # http://127.0.0.1:8000/docs
 
-"""{
-  "mcpServers": {
-    "dochazka-openapi": {
-      "command": "uv",
-      "args": [
-        "tool",
-        "run",
-        "--from",
-        "awslabs.openapi-mcp-server@latest",
-        "awslabs.openapi-mcp-server.exe"
-      ],
-      "env": {
-        "API_NAME": "dochazka",
-        "API_BASE_URL": "http://127.0.0.1:8000",
-        "API_SPEC_URL": "http://127.0.0.1:8000/openapi.json",
-        "LOG_LEVEL": "INFO"
-      }
-    }
-  },
-  "preferences": {
-    "coworkScheduledTasksEnabled": false,
-    "sidebarMode": "chat"
-  }
-}"""

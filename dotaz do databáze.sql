@@ -7,6 +7,6 @@ SELECT TOP 200
     o.id                                        AS osoba_id      
 FROM dbo.pruchod p
 JOIN dbo.osoby o ON p.cip = o.cip
-Where o.prijmeni = N'Bloudek'
-And o.jmeno = N'Rudolf'
+Where o.prijmeni = N'David Daniel'
+And o.jmeno = N'Elleder'
 ORDER BY p.datum DESC, p.CAS DESC;
