@@ -1,32 +1,20 @@
 from datetime import date
-from dotenv import load_dotenv
-import os
 from typing import List
-import pyodbc
-from fastapi import FastAPI, Query
 from pydantic import BaseModel
-
-load_dotenv()  # načte hodnoty z .env 
-
-app = FastAPI(title="Docházka API")
+from db import get_connection
 
 
-SERVER = os.getenv("DB_SERVER")
-DATABASE = os.getenv("DB_NAME")
-USER = os.getenv("DB_USER")
-PASSWORD = os.getenv("DB_PASSWORD")
-
-conn_str = (
-    "Driver={ODBC Driver 18 for SQL Server};"
-    f"Server={SERVER};"
-    f"Database={DATABASE};"
-    f"UID={USER};"
-    f"PWD={PASSWORD};"
-    "Encrypt=yes;"
-    "TrustServerCertificate=yes;"
-)
+# výstupní model
+class PassRecord(BaseModel):
+    datum: date
+    cas: str
+    cip: str
+    jmeno: str
+    prijmeni: str
+    osoba_id: int
 
 
+# SQL dotazy date/person
 QUERY_BY_DATE = """
 SELECT TOP 200
     DATEADD(DAY, p.datum, '1900-01-01') AS datum,
@@ -56,25 +44,19 @@ WHERE LTRIM(RTRIM(o.jmeno)) LIKE ?
 ORDER BY p.datum DESC, p.CAS DESC;
 """
 
-#forma vystupu
-class PassRecord(BaseModel):
-    datum: date
-    cas: str
-    cip: str
-    jmeno: str
-    prijmeni: str
-    osoba_id: int 
 
+# obecná funkce
 def fetch_rows(query: str, params: tuple) -> List[PassRecord]:
-    conn = pyodbc.connect(conn_str)
+    conn = get_connection()
     try:
         cur = conn.cursor()
         cur.execute(query, params)
         rows = cur.fetchall()
 
-        out: List[PassRecord] = []
+        result: List[PassRecord] = []
+
         for r in rows:
-            out.append(
+            result.append(
                 PassRecord(
                     datum=r.datum,
                     cas=str(r.cas)[:8],
@@ -84,25 +66,19 @@ def fetch_rows(query: str, params: tuple) -> List[PassRecord]:
                     osoba_id=r.osoba_id,
                 )
             )
-        return out
+
+        return result
     finally:
         conn.close()
 
 
-
-@app.get("/passes/by-date", response_model=List[PassRecord])
-def passes_by_date(date_value: date = Query(..., alias="date")):
-  
+# business logika
+def get_passes_by_date(date_value: date) -> List[PassRecord]:
     return fetch_rows(QUERY_BY_DATE, (date_value,))
 
-@app.get("/passes/by-person", response_model=List[PassRecord])
-def passes_by_person(first_name: str, last_name: str):
-  
-    return fetch_rows(QUERY_BY_PERSON, (f"%{first_name}%", f"%{last_name}%"))
 
-
-
-
-# uvicorn api:app --reload
-# http://127.0.0.1:8000/docs
-
+def get_passes_by_person(first_name: str, last_name: str) -> List[PassRecord]:
+    return fetch_rows(
+        QUERY_BY_PERSON,
+        (f"%{first_name}%", f"%{last_name}%")
+    )
