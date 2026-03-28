@@ -1,73 +1,101 @@
 # Docházkový systém – maturitní práce
 
-# Popis projektu
+## Popis projektu
 
-Tento projekt představuje jednoduchý docházkový systém postavený nad existující databází. Umožňuje vyhledávat záznamy o průchodech osob podle data nebo podle jména a příjmení.
+Tento projekt představuje jednoduchý docházkový systém postavený nad existující databází školy.  
+Umožňuje vyhledávat záznamy o průchodech osob podle data nebo podle jména a příjmení.
 
-Cílem práce bylo vytvořit přehledné API nad databází a ukázat základní principy backendového vývoje – rozdělení aplikace do vrstev, práce s databází, zabezpečení a propojení s AI nástrojem (Claude AI Desktop) pomocí MCP.
+Cílem práce bylo vytvořit přehledné REST API nad databází a ukázat základní principy backendového vývoje:
+
+- rozdělení aplikace do vrstev
+- práce s databází
+- autentizace pomocí API klíče
+- error handling
+- propojení s AI nástrojem pomocí MCP
 
 ---
 
-# Funkce systému
+## Funkce systému
 
 API umožňuje:
 
-* vyhledání průchodů podle data
-* vyhledání průchodů podle osoby (jméno a příjmení)
+- vyhledání průchodů podle data
+- vyhledání průchodů podle osoby (jméno + příjmení)
 
 Každý záznam obsahuje:
 
-* datum
-* čas
-* čip
-* jméno a příjmení
-* ID osoby
+- datum
+- čas
+- čip
+- jméno
+- příjmení
+- ID osoby
 
-Dále API podporuje:
+Dále systém podporuje:
 
-* stránkování (`limit`, `offset`)
-* autentizaci pomocí API klíče
-* základní error handling
+- stránkování (`limit`, `offset`)
+- autentizaci pomocí API klíče
+- základní error handling
 
 ---
 
-## Architektura
+## Architektura projektu
 
-Projekt je rozdělen do několika částí:
+Projekt je rozdělen do několika vrstev:
 
-* `db.py`
-  Zajišťuje připojení k databázi a provádění SQL dotazů.
+### `db.py`
+Databázová vrstva.  
+Zajišťuje připojení k SQL Serveru a vykonávání SQL dotazů.
 
-* `service.py`
-  Obsahuje business logiku a SQL dotazy. Převádí data z databáze na výstupní modely.
+---
 
-* `server.py`
-  FastAPI vrstva, která vystavuje endpointy. Neobsahuje přímou práci s databází.
+### `dochazka_db_service.py`
+Service vrstva.  
+Obsahuje aplikační logiku a převádí databázové řádky na výstupní modely (`PassRecord`).
 
-* `main.py`
-  Skládá aplikaci dohromady a spouští server.
+---
 
-* `mcp_dochazka_server.py`
-  MCP server, který komunikuje s API a zpřístupňuje data pro AI nástroje.
+### `dochazka_rest_server.py`
+REST vrstva postavená nad FastAPI.  
+Zpracovává HTTP požadavky, validuje API klíč a volá service vrstvu.
+
+---
+
+### `uvicorn_rest_app.py`
+Entrypoint aplikace.  
+Skládá jednotlivé vrstvy dohromady a vystavuje FastAPI aplikaci.
+
+---
+
+### `mcp_server.py`
+MCP vrstva.  
+Obsahuje klienta (`DochazkaMcpClient`), který komunikuje s REST API pomocí HTTP.
+
+---
+
+### `mcp_server_main.py`
+Entrypoint MCP serveru.  
+Spouští MCP server pro použití v AI nástrojích (např. Claude Desktop).
 
 ---
 
 ## Použité technologie
 
-* Python
-* FastAPI
-* pyodbc
-* Microsoft SQL Server
-* Pydantic
-* requests
-* FastMCP
-* python-dotenv
+- Python
+- FastAPI
+- Uvicorn
+- pyodbc
+- Microsoft SQL Server
+- Pydantic
+- requests
+- FastMCP
+- python-dotenv
 
 ---
 
 ## Konfigurace
 
-V kořenové složce vytvoř `.env` soubor:
+V kořenové složce projektu vytvoř `.env` soubor:
 
 ```env
 DB_SERVER=...
@@ -76,19 +104,42 @@ DB_USER=...
 DB_PASSWORD=...
 API_KEY=...
 BASE_URL=http://127.0.0.1:8000
-```
+````
 
 Soubor `.env` není součástí repozitáře.
 
 ---
 
-## Spuštění API
+## Instalace závislostí
+
+Pomocí Makefile:
 
 ```bash
-uvicorn main:app --reload
+make prepare
 ```
 
-Dokumentace API (Swagger UI):
+Nebo ručně:
+
+```bash
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+```
+
+---
+
+## Spuštění REST API
+
+```bash
+make start-web-server
+```
+
+Nebo ručně:
+
+```bash
+python -m uvicorn uvicorn_rest_app:app --reload
+```
+
+Swagger UI:
 
 ```
 http://127.0.0.1:8000/docs
@@ -98,17 +149,17 @@ http://127.0.0.1:8000/docs
 
 ## Endpointy
 
-### GET /passes/by-date
+### GET `/passes/by-date`
 
 Parametry:
 
 * `date` (YYYY-MM-DD)
-* `limit` (výchozí 100)
-* `offset` (výchozí 0)
+* `limit`
+* `offset`
 
 ---
 
-### GET /passes/by-person
+### GET `/passes/by-person`
 
 Parametry:
 
@@ -121,33 +172,33 @@ Parametry:
 
 ## Autentizace
 
-API používá jednoduchý API klíč.
+API používá API klíč.
 
-Posílá se v hlavičce:
+Posílá se v HTTP hlavičce:
 
 ```
 X-API-Key: tvuj_klic
 ```
 
-Bez správného klíče server vrací chybu 401.
+Bez správného klíče server vrací chybu `401 Unauthorized`.
 
 ---
 
 ## Error handling
 
-API vrací základní HTTP chyby:
+API vrací tyto chyby:
 
-* 401 – neplatný API klíč
-* 503 – databáze není dostupná
-* 500 – interní chyba
+* `401` – neplatný API klíč
+* `503` – databáze nedostupná
+* `500` – interní chyba
 
 ---
 
-## MCP a Claude Desktop
+## MCP a AI integrace
 
-Projekt je možné propojit s Claude Desktop pomocí MCP.
+Projekt lze propojit s AI nástroji pomocí MCP serveru.
 
-Konfigurace MCP serveru vypadá například takto:
+Ukázka konfigurace (Claude Desktop):
 
 ```json
 {
@@ -155,38 +206,37 @@ Konfigurace MCP serveru vypadá například takto:
     "dochazka": {
       "command": "python",
       "args": [
-        "C:\\Users\\delle\\OneDrive\\Dokumenty\\maturitní práce\\mcp_dochazka_server.py"
+        "C:\\Users\\delle\\OneDrive\\Dokumenty\\maturitní práce\\mcp_server_main.py"
       ]
     }
   }
 }
 ```
 
-Tato konfigurace říká:
-
-* jak se má MCP server spustit
-* kde se nachází jeho soubor
-
-Po spuštění Claude Desktop běží MCP server na pozadí a model ho může používat jako nástroj. Server následně volá API a vrací výsledky zpět modelu.
+MCP server následně volá REST API a vrací výsledky modelu.
 
 ---
 
-## SQL a databáze
+## Spuštění MCP serveru
 
-* datum je v databázi uložené jako počet dnů od roku 1900
-* převod se provádí v aplikaci
-* dotazy nepoužívají funkce ve WHERE části, aby bylo možné využít indexy
-* používá se stránkování pomocí `OFFSET` a `FETCH`
+```bash
+make start-mcp-server
+```
+
+Nebo:
+
+```bash
+python mcp_server_main.py
+```
 
 ---
 
-## Databázové připojení
+## Databáze
 
-Aplikace používá ODBC connection pooling:
-
-* pro každý dotaz se vytvoří spojení
-* po dokončení se zavře
-* driver může spojení znovu využít
+* datum je uložen jako počet dnů od `1900-01-01`
+* převod probíhá v aplikaci
+* používá se stránkování (`OFFSET`, `FETCH`)
+* dotazy jsou optimalizované pro indexy
 
 ---
 
@@ -206,13 +256,11 @@ Citlivé údaje se nelogují.
 
 ## Shrnutí
 
-Projekt ukazuje základní principy backendové aplikace:
+Projekt představuje ukázku vícevrstvé backendové aplikace:
 
-* rozdělení do vrstev
-* práce s databází
+* databázová vrstva
+* service vrstva
 * REST API
 * autentizace
 * error handling
 * propojení s AI pomocí MCP
-
-Nejde o produkční systém, ale o funkční a přehlednou ukázku řešení.

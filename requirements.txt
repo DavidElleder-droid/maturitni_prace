@@ -1,7 +1,7 @@
-fastapi   # webový framework pro API
-uvicorn  # ASGI server pro běh FastAPI
-pyodbc  # pro připojení k SQL Serveru
-pydantic       # pro validaci datových modelů
-requests    # volá REST API
-python-dotenv  # pro ochranu hesla
-fastmcp  # mcp server framework
+fastapi==0.115.12   # webový framework pro API
+uvicorn==0.41.0     # ASGI server pro běh FastAPI
+pyodbc==5.3.0       # pro připojení k SQL Serveru
+pydantic==2.12.5    # pro validaci datových modelů
+requests==2.32.3    # volá REST API
+python-dotenv==1.2.2 # pro ochranu hesla
+fastmcp==3.1.0      # mcp server framework

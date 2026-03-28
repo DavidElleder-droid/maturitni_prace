@@ -1,5 +1,14 @@
+"""
+Databázová vrstva projektu Docházka.
+
+Zajišťuje načtení konfigurace z prostředí, vytvoření připojení
+k SQL Serveru a vykonávání parametrizovaných SQL dotazů.
+"""
+
+
 import logging
 import os
+from typing import TypeAlias
 
 import pyodbc
 from dotenv import load_dotenv
@@ -12,9 +21,19 @@ logger = logging.getLogger(__name__)
 # Musí být nastaveno před vytvářením connection.
 pyodbc.pooling = True
 
+SQLParam: TypeAlias = str | int | float
+
 
 class Database:
-    def __init__(self):
+    """Databázová vrstva zajišťující připojení k SQL Serveru a vykonávání dotazů."""
+
+    def __init__(self) -> None:
+        """
+        Načte konfiguraci z prostředí a připraví connection string.
+
+        Raises:
+            ValueError: Pokud chybí některá povinná proměnná prostředí.
+        """
         self.server = self._get_required_env("DB_SERVER")
         self.database = self._get_required_env("DB_NAME")
         self.user = self._get_required_env("DB_USER")
@@ -34,16 +53,47 @@ class Database:
         logger.info("Databázová vrstva inicializována, ODBC pooling je zapnutý")
 
     def _get_required_env(self, key: str) -> str:
+        """
+        Vrátí hodnotu povinné proměnné prostředí.
+
+        Args:
+            key: Název proměnné prostředí.
+
+        Returns:
+            Hodnota proměnné prostředí.
+
+        Raises:
+            ValueError: Pokud proměnná není nastavena.
+        """
         value = os.getenv(key)
         if not value:
             raise ValueError(f"Chybí povinná proměnná prostředí: {key}")
         return value
 
-    def _connect(self):
+    def _connect(self) -> pyodbc.Connection:
+        """
+        Vytvoří nové databázové spojení.
+
+        Returns:
+            Otevřené spojení k SQL Serveru.
+        """
         logger.debug("Vytvářím databázové spojení")
         return pyodbc.connect(self.conn_str)
 
-    def execute(self, query: str, params: tuple = ()):
+    def execute(self, query: str, params: tuple[SQLParam, ...] = ()) -> list[pyodbc.Row]:
+        """
+        Provede SQL dotaz a vrátí všechny načtené řádky.
+
+        Args:
+            query: SQL dotaz, který se má vykonat.
+            params: Parametry předané do SQL dotazu.
+
+        Returns:
+            Seznam řádků vrácených databází.
+
+        Raises:
+            pyodbc.Error: Pokud dojde k chybě při komunikaci s databází.
+        """
         logger.info("Provádím SQL dotaz s parametry: %s", params)
 
         try:
@@ -53,7 +103,6 @@ class Database:
                     rows = cur.fetchall()
                     logger.info("SQL dotaz proběhl úspěšně, načteno %d řádků", len(rows))
                     return rows
-
         except pyodbc.Error:
             logger.exception("Chyba při komunikaci s databází")
             raise
